@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, ArrowRight, Calendar, Filter } from 'lucide-react';
 import { Trade, DailyStats } from '../types';
 
 interface CalendarViewProps {
@@ -9,6 +9,11 @@ interface CalendarViewProps {
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade }) => {
   const [viewDate, setViewDate] = useState(new Date());
+  const [showYearMonthPicker, setShowYearMonthPicker] = useState(false);
+  const [showDateRangeFilter, setShowDateRangeFilter] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [filteredTrades, setFilteredTrades] = useState<Trade[]>(trades);
   
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth(); // 0-indexed
@@ -25,6 +30,29 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade 
   const handleToday = () => {
     setViewDate(new Date());
   };
+
+  const handleYearMonthChange = (newYear: number, newMonth: number) => {
+    setViewDate(new Date(newYear, newMonth, 1));
+    setShowYearMonthPicker(false);
+  };
+
+  const handleApplyDateRange = () => {
+    if (dateFrom && dateTo) {
+      const filtered = trades.filter(trade => {
+        return trade.date >= dateFrom && trade.date <= dateTo;
+      });
+      setFilteredTrades(filtered);
+      setShowDateRangeFilter(false);
+    }
+  };
+
+  const handleClearDateRange = () => {
+    setDateFrom('');
+    setDateTo('');
+    setFilteredTrades(trades);
+  };
+
+  const activeTrades = dateFrom && dateTo ? filteredTrades : trades;
 
   // Helper to get days in month
   const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
@@ -50,7 +78,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade 
     const map = new Map<string, DailyStatsWithResults>();
     
     // Process trades to aggregate stats by day
-    trades.forEach(trade => {
+    activeTrades.forEach(trade => {
       // Parse date string (YYYY-MM-DD) explicitly to avoid timezone issues
       const parts = trade.date.split('-');
       if (parts.length !== 3) return;
@@ -84,7 +112,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade 
       map.set(dateKey, existing);
     });
     return map;
-  }, [trades, month, year]);
+  }, [activeTrades, month, year]);
 
   const daysArray = Array.from({ length: 42 }, (_, i) => {
     const dayNumber = i - startDay + 1;
@@ -95,6 +123,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade 
   });
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  // Generate year options (last 5 years + next 2 years)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 8 }, (_, i) => currentYear - 5 + i);
 
   // Function to generate SVG path for sparkline (cumulative daily P&L)
   const getSparklinePath = (results: number[]) => {
@@ -144,10 +176,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade 
   return (
     <>
     <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
-      <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         
-        <div className="flex items-center gap-4">
-            <h2 className="text-lg font-bold text-white w-[160px]">{monthNames[month]} {year}</h2>
+        <div className="flex items-center gap-4 flex-wrap">
+            <button
+              onClick={() => setShowYearMonthPicker(!showYearMonthPicker)}
+              className="flex items-center gap-2 bg-slate-900/50 hover:bg-slate-700 px-3 py-2 rounded-lg border border-slate-700 text-white font-bold transition-colors"
+            >
+              <Calendar size={18} />
+              <span>{monthNames[month]} {year}</span>
+            </button>
+            
             <div className="flex items-center gap-1 bg-slate-900/50 rounded-lg p-1 border border-slate-700">
                 <button 
                     onClick={handlePrevMonth} 
@@ -173,7 +212,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade 
             </div>
         </div>
 
-        <div className="text-sm text-slate-400">Monthly P&L Overview</div>
+        <div className="flex items-center gap-3">
+          {dateFrom && dateTo && (
+            <div className="flex items-center gap-2 bg-indigo-900/30 border border-indigo-700 px-3 py-1.5 rounded-lg">
+              <span className="text-xs text-indigo-300">
+                {dateFrom} → {dateTo}
+              </span>
+              <button 
+                onClick={handleClearDateRange}
+                className="text-indigo-400 hover:text-white"
+                title="Clear filter"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setShowDateRangeFilter(!showDateRangeFilter)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              dateFrom && dateTo 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                : 'bg-slate-900/50 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <Filter size={16} />
+            Filter
+          </button>
+        </div>
       </div>
       
       {/* Calendar Grid */}
@@ -306,6 +371,112 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ trades, onViewTrade 
                 </div>
             </div>
         </div>
+    )}
+    
+    {/* Year/Month Picker Modal */}
+    {showYearMonthPicker && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowYearMonthPicker(false)}>
+        <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-slate-700 p-6" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-white font-bold text-lg">Select Month & Year</h3>
+            <button onClick={() => setShowYearMonthPicker(false)} className="text-slate-400 hover:text-white">
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Year</label>
+              <div className="grid grid-cols-4 gap-2">
+                {yearOptions.map(y => (
+                  <button
+                    key={y}
+                    onClick={() => handleYearMonthChange(y, month)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      y === year 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                    }`}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Month</label>
+              <div className="grid grid-cols-3 gap-2">
+                {monthNames.map((m, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleYearMonthChange(year, i)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      i === month 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                    }`}
+                  >
+                    {m.substring(0, 3)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Date Range Filter Modal */}
+    {showDateRangeFilter && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDateRangeFilter(false)}>
+        <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-slate-700 p-6" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-white font-bold text-lg">Filter by Date Range</h3>
+            <button onClick={() => setShowDateRangeFilter(false)} className="text-slate-400 hover:text-white">
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">From Date</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">To Date</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleClearDateRange}
+                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleApplyDateRange}
+                disabled={!dateFrom || !dateTo}
+                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-medium transition-colors"
+              >
+                Apply Filter
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     )}
     </>
   );
