@@ -6,6 +6,11 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https'
+  },
+  android: {
+    buildOptions: {
+      signingConfig: 'debug'
+    }
   }
 };
 
