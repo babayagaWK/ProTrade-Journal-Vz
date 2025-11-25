@@ -26,13 +26,23 @@ jobs:
         java-version: '17'
         
     - name: Install dependencies
-      run: npm install
+      run: |
+        echo "Installing npm dependencies..."
+        npm install
+        echo "Dependencies installed successfully"
       
     - name: Create .env.local file
-      run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env.local
+      run: |
+        echo "Creating .env.local file..."
+        echo "GEMINI_API_KEY=placeholder" > .env.local
+        echo ".env.local created"
       
     - name: Build web application
-      run: npm run build
+      run: |
+        echo "Starting web build..."
+        npm run build
+        echo "Web build completed"
+        ls -la dist/
       continue-on-error: false
       
     - name: Sync Capacitor to Android
