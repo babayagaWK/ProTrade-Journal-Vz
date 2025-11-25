@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, LayoutDashboard, Settings as SettingsIcon } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { TradeForm } from './components/TradeForm';
 import { TradeDetails } from './components/TradeDetails';
+import { Settings } from './components/Settings';
 import { Trade } from './types';
-import { getTrades, saveTrade, deleteTrade } from './services/storageService';
+import { getTrades, saveTrade, deleteTrade, getApiKey } from './services/storageService';
 
 const App: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // State for View/Edit Modals
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -67,8 +69,15 @@ const App: React.FC = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="hidden md:block text-xs text-slate-500 bg-slate-900 px-3 py-1 rounded border border-slate-700">
-                 {process.env.API_KEY ? "AI Enabled" : "AI Key Missing"}
+                 {getApiKey() ? "AI Enabled" : "AI Key Missing"}
               </div>
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded-lg"
+                title="Settings"
+              >
+                <SettingsIcon size={20} />
+              </button>
               <button 
                 onClick={() => setIsFormOpen(true)}
                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20"
@@ -106,6 +115,11 @@ const App: React.FC = () => {
             trade={selectedTrade} 
             onClose={() => setSelectedTrade(null)} 
           />
+      )}
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <Settings onClose={() => setIsSettingsOpen(false)} />
       )}
     </div>
   );

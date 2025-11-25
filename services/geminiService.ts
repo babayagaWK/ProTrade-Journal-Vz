@@ -1,12 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { Trade } from '../types';
+import { getApiKey } from './storageService';
 
 export const analyzeTradeWithGemini = async (trade: Partial<Trade>): Promise<string> => {
-  if (!process.env.API_KEY) {
-    return "API Key is missing. Please configure the environment.";
+  const apiKey = getApiKey() || process.env.API_KEY;
+  
+  if (!apiKey) {
+    return "API Key is missing. Please set your Gemini API Key in settings.";
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `
     You are a professional senior trading mentor. Analyze the following trade details and provide brief, constructive feedback in 2-3 sentences. Focus on the setup and outcome.

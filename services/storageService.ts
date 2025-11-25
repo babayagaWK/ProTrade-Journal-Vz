@@ -1,6 +1,7 @@
 import { Trade } from '../types';
 
 const STORAGE_KEY = 'protrade_journal_data';
+const API_KEY_STORAGE = 'protrade_gemini_api_key';
 
 // Mock data for initial load if empty
 const MOCK_TRADES: Trade[] = [
@@ -123,4 +124,16 @@ export const deleteTrade = (id: string): Trade[] => {
 
 export const clearTrades = (): void => {
   localStorage.removeItem(STORAGE_KEY);
+};
+
+export const getApiKey = (): string | null => {
+  return localStorage.getItem(API_KEY_STORAGE);
+};
+
+export const saveApiKey = (apiKey: string): void => {
+  localStorage.setItem(API_KEY_STORAGE, apiKey);
+};
+
+export const clearApiKey = (): void => {
+  localStorage.removeItem(API_KEY_STORAGE);
 };
