@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ProTrade Journal</string>
+    <string name="title_activity_main">ProTrade Journal</string>
+    <string name="package_name">com.protrade.journal</string>
+    <string name="custom_url_scheme">com.protrade.journal</string>
+</resources>
