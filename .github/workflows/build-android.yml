@@ -65,14 +65,3 @@ jobs:
         name: protrade-journal-debug
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
-        
-    - name: Create Release (optional)
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v1.0.${{ github.run_number }}
-        files: android/app/build/outputs/apk/debug/app-debug.apk
-        draft: false
-        prerelease: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
