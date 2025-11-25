@@ -22,9 +22,12 @@ export const TradeForm: React.FC<TradeFormProps> = ({ onClose, onSave, initialDa
     date: new Date().toISOString().split('T')[0],
     symbol: '',
     type: 'LONG',
+    marketType: 'SPOT',
     entryPrice: 0,
     exitPrice: 0,
     quantity: 1,
+    leverage: 1,
+    contractSize: 1,
     fees: 0,
     setup: '',
     notes: '',
@@ -65,15 +68,36 @@ export const TradeForm: React.FC<TradeFormProps> = ({ onClose, onSave, initialDa
   };
 
   const calculatePnL = () => {
-    const { entryPrice, exitPrice, quantity, type, fees } = formData;
+    const { entryPrice, exitPrice, quantity, type, fees, marketType, leverage, contractSize } = formData;
     if (entryPrice === undefined || exitPrice === undefined || quantity === undefined) return 0;
     
     let grossPnL = 0;
-    if (type === 'LONG') {
-      grossPnL = (exitPrice - entryPrice) * quantity;
-    } else {
-      grossPnL = (entryPrice - exitPrice) * quantity;
+    const priceDiff = type === 'LONG' ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+    
+    switch (marketType) {
+      case 'SPOT':
+        // Spot: P&L = (Exit - Entry) * Quantity
+        grossPnL = priceDiff * quantity;
+        break;
+        
+      case 'FUTURE':
+        // Future: P&L = (Price Diff) * Contract Size * Quantity * Leverage
+        const futureContractSize = contractSize || 1;
+        const futureLeverage = leverage || 1;
+        grossPnL = priceDiff * futureContractSize * quantity * futureLeverage;
+        break;
+        
+      case 'FX_CFD':
+        // FX & CFD: P&L = (Price Diff in pips) * Lot Size * Quantity
+        // Assuming quantity is in lots and contractSize is the value per pip
+        const cfgContractSize = contractSize || 100000; // Standard lot
+        grossPnL = priceDiff * cfgContractSize * quantity;
+        break;
+        
+      default:
+        grossPnL = priceDiff * quantity;
     }
+    
     return grossPnL - (fees || 0);
   };
 
@@ -129,7 +153,7 @@ export const TradeForm: React.FC<TradeFormProps> = ({ onClose, onSave, initialDa
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
             </div>
 
-            {/* Type & Setup */}
+            {/* Type & Market Type */}
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Direction</label>
               <select name="type" value={formData.type} onChange={handleChange}
@@ -138,7 +162,18 @@ export const TradeForm: React.FC<TradeFormProps> = ({ onClose, onSave, initialDa
                 <option value="SHORT">SHORT (Sell)</option>
               </select>
             </div>
-             <div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Market Type</label>
+              <select name="marketType" value={formData.marketType} onChange={handleChange}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="SPOT">Spot</option>
+                <option value="FUTURE">Future</option>
+                <option value="FX_CFD">FX & CFD</option>
+              </select>
+            </div>
+
+            {/* Setup */}
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-400 mb-1">Setup / Strategy</label>
               <input type="text" name="setup" placeholder="e.g. Breakout, Reversal" value={formData.setup} onChange={handleChange}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -156,7 +191,7 @@ export const TradeForm: React.FC<TradeFormProps> = ({ onClose, onSave, initialDa
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Quantity</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Quantity{formData.marketType === 'FX_CFD' ? ' (Lots)' : ''}</label>
               <input type="number" step="0.01" name="quantity" required value={formData.quantity} onChange={handleChange}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
@@ -165,6 +200,36 @@ export const TradeForm: React.FC<TradeFormProps> = ({ onClose, onSave, initialDa
               <input type="number" step="0.01" name="fees" value={formData.fees} onChange={handleChange}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
+
+            {/* Conditional fields for Future and FX&CFD */}
+            {(formData.marketType === 'FUTURE' || formData.marketType === 'FX_CFD') && (
+              <>
+                {formData.marketType === 'FUTURE' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Leverage</label>
+                      <input type="number" step="1" name="leverage" value={formData.leverage} onChange={handleChange}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                        placeholder="e.g., 10" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Contract Size</label>
+                      <input type="number" step="0.01" name="contractSize" value={formData.contractSize} onChange={handleChange}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                        placeholder="e.g., 1 for BTC, 100 for Gold" />
+                    </div>
+                  </>
+                )}
+                {formData.marketType === 'FX_CFD' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Contract Size (per lot)</label>
+                    <input type="number" step="1" name="contractSize" value={formData.contractSize} onChange={handleChange}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                      placeholder="Standard: 100,000" />
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* PnL Preview */}
